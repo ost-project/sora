@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../project/index.ts", "../project/sum.ts"],
+  "sourcesContent": ["import { sum } from './sum'\n\nexport default sum(1,2)", "export const sum = (a: number, b: number) => a + b"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;;;ACAO,IAAM,MAAM,CAAC,GAAW,MAAc,IAAI;;;ADEjD,IAAO,kBAAQ,IAAI,GAAE,CAAC;",
+  "names": []
+}
