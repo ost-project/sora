@@ -3,7 +3,7 @@ use crate::Result;
 use simd_json::Buffers;
 use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// `SourceMap` is a source map that owns all its internal strings,
 /// providing a more straightforward and safe API for
@@ -49,6 +49,12 @@ impl Deref for SourceMap {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for SourceMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
