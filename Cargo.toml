@@ -1,6 +1,6 @@
 [package]
 name = "sora"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["unbyte <i@shangyes.net>"]
 description = "lightweight and fast source map parser and utils"
 keywords = ["sourcemap"]
