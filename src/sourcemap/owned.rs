@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 /// providing a more straightforward and safe API for
 /// users who do not need to manage the lifetimes of the strings manually.
 #[derive(Clone)]
-pub struct SourceMap(BorrowedSourceMap<'static>);
+pub struct SourceMap(pub(crate) BorrowedSourceMap<'static>);
 
 impl Debug for SourceMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -191,9 +191,11 @@ mod builder {
                 extension: self.extension,
             }
         }
+    }
 
+    impl SourceMapBuilder<'static> {
         pub fn build(self) -> Result<SourceMap> {
-            self.build_borrowed().map(Into::into)
+            self.build_borrowed().map(SourceMap)
         }
 
         /// Creates a new [SourceMap] without validation.
@@ -203,7 +205,7 @@ mod builder {
         /// This function does not validate the values. The caller must ensure that
         /// the values are valid.
         pub unsafe fn build_unchecked(self) -> SourceMap {
-            self.build_borrowed_unchecked().into()
+            SourceMap(self.build_borrowed_unchecked())
         }
     }
 }
