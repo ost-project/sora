@@ -16,21 +16,23 @@ fn parse_sourcemap(data: Vec<u8>) {
 }
 
 fn benchmark_parse(c: &mut Criterion) {
-    for (name, buf) in [
-        ("antd", read_file("data/antd.min.js.map")),
-        ("jquery", read_file("data/jquery.min.js.map")),
-        ("tiny", read_file("data/tiny.js.map")),
-        ("tsc", read_file("data/tsc.min.js.map")),
-    ] {
+    #[rustfmt::skip]
+    let cases = [
+        ("tiny", read_file("data/tiny.js.map"), BatchSize::SmallInput),
+        ("jquery", read_file("data/jquery.min.js.map"), BatchSize::SmallInput),
+        ("antd", read_file("data/antd.min.js.map"), BatchSize::LargeInput),
+        ("tsc", read_file("data/tsc.min.js.map"), BatchSize::LargeInput)
+    ];
+    for (name, buf, batch_size) in cases {
         let mut bg = c.benchmark_group(format!("parse({name})"));
         bg.bench_with_input("sora(borrowed)", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sora_borrowed, BatchSize::SmallInput)
+            b.iter_batched(|| input.clone(), parse_sora_borrowed, batch_size)
         });
         bg.bench_with_input("sora(owned)", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sora_owned, BatchSize::SmallInput)
+            b.iter_batched(|| input.clone(), parse_sora_owned, batch_size)
         });
         bg.bench_with_input("sourcemap", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sourcemap, BatchSize::SmallInput)
+            b.iter_batched(|| input.clone(), parse_sourcemap, batch_size)
         });
     }
 }
