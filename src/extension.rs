@@ -20,6 +20,11 @@ impl Extension {
 }
 
 impl Extension {
+    pub(crate) fn from_raw(ignore_list: Option<Vec<u32>>) -> Self {
+        let ignore_list = ignore_list.unwrap_or_default();
+        Self { ignore_list }
+    }
+
     pub(crate) fn validate(&self, sources_count: u32) -> Result<()> {
         if let Some((idx, &id)) = self
             .ignore_list

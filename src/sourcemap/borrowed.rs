@@ -65,6 +65,7 @@ pub struct BorrowedSourceMap<'a> {
     pub(crate) file: Option<Cow<'a, str>>,
     pub(crate) mappings: Mappings,
     pub(crate) names: Vec<Cow<'a, str>>,
+    pub(crate) source_root: Option<Cow<'a, str>>,
     pub(crate) sources: Vec<Option<Cow<'a, str>>>,
     pub(crate) sources_content: Vec<Option<Cow<'a, str>>>,
     #[cfg(feature = "extension")]
@@ -276,92 +277,55 @@ impl<'a> BorrowedSourceMap<'a> {
             return Err(Error::UnsupportedFormat);
         }
 
-        let mut sm = Self::empty();
-        sm.process_map(raw)?;
-        Ok(sm)
-    }
+        let file = raw.file.map(Cow::Borrowed);
 
-    // use customize method `empty` rather than derive(Default)
-    fn empty() -> Self {
-        Self {
-            file: None,
-            mappings: Mappings::default(),
-            names: Vec::new(),
-            sources: Vec::new(),
-            sources_content: Vec::new(),
-            #[cfg(feature = "extension")]
-            extension: crate::Extension::default(),
-        }
-    }
+        let source_root = raw.source_root.map(Cow::Borrowed);
 
-    #[inline]
-    fn process_map(&mut self, raw: RawSourceMap<'a>) -> Result<()> {
-        self.file = raw.file.map(Cow::Borrowed);
+        let sources = raw
+            .sources
+            .map(|sources| Vec::from_iter(sources.into_iter().map(|s| s.map(Cow::Borrowed))))
+            .unwrap_or_default();
 
-        if let Some(names) = raw.names {
-            let names_len = names.len();
-            self.names.reserve(names_len);
-            self.names.extend(names.into_iter().map(Cow::Borrowed));
-        }
+        let sources_len = sources.len();
 
-        if let Some(sources) = raw.sources {
-            let sources_len = sources.len();
-            self.sources.reserve(sources_len);
-            if let Some(source_root) = raw.source_root.filter(|sr| !sr.is_empty()) {
-                let source_root = source_root.trim_end_matches('/');
-                self.sources.extend(sources.into_iter().map(|s| {
-                    s.map(|source| {
-                        if !source.is_empty()
-                            && (source.starts_with('/')
-                                || source.starts_with("http:")
-                                || source.starts_with("https:"))
-                        {
-                            Cow::Borrowed(source)
-                        } else {
-                            Cow::Owned(format!("{}/{}", source_root, source))
-                        }
-                    })
-                }));
-            } else {
-                self.sources
-                    .extend(sources.into_iter().map(|s| s.map(Cow::Borrowed)));
+        let sources_content = if let Some(sources_content) = raw.sources_content {
+            let sources_content_len = sources_content.len();
+            if sources_content_len != sources_len {
+                return Err(Error::invalid_sources_content(
+                    sources_len as u32,
+                    sources_content_len as u32,
+                ));
             }
+            Vec::from_iter(sources_content.into_iter().map(|s| s.map(Cow::Borrowed)))
+        } else {
+            Vec::from_iter(repeat_with(|| None).take(sources_len))
+        };
 
-            if let Some(sources_content) = raw.sources_content {
-                let sources_content_len = sources_content.len();
-                if sources_content_len != sources_len {
-                    return Err(Error::invalid_sources_content(
-                        sources_len as u32,
-                        sources_content_len as u32,
-                    ));
-                }
-                self.sources_content.reserve(sources_content_len);
-                self.sources_content
-                    .extend(sources_content.into_iter().map(|s| s.map(Cow::Borrowed)));
-            } else {
-                self.sources_content.reserve(sources_len);
-                self.sources_content
-                    .extend(repeat_with(|| None).take(sources_len));
-            }
-        }
+        let names = raw
+            .names
+            .map(|names| Vec::from_iter(names.into_iter().map(Cow::Borrowed)))
+            .unwrap_or_default();
 
-        let end_sources_id = self.sources.len() as u32;
-        let end_names_id = self.names.len() as u32;
+        let names_len = names.len();
 
         #[cfg(feature = "extension")]
-        if let Some(ignore_list) = raw.ignore_list {
-            if !ignore_list.is_empty() {
-                self.extension.ignore_list.reserve(ignore_list.len());
-                self.extension.ignore_list.extend(ignore_list);
-            }
-        }
+        let extension = crate::Extension::from_raw(raw.ignore_list);
 
-        self.mappings.decode(
+        let mappings = Mappings::decode(
             raw.mappings.unwrap_or_default(),
-            ItemsCount::new(end_sources_id, end_names_id),
+            ItemsCount::new(sources_len as u32, names_len as u32),
         )?;
 
-        Ok(())
+        Ok(Self {
+            file,
+            source_root,
+            sources,
+            sources_content,
+            names,
+            mappings,
+            #[cfg(feature = "extension")]
+            extension,
+        })
     }
 }
 

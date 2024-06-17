@@ -169,19 +169,19 @@ impl Mappings {
 }
 
 impl Mappings {
-    #[inline(never)]
-    pub(crate) fn decode(&mut self, source: &str, items_count: ItemsCount) -> Result<()> {
+    pub(crate) fn decode(source: &str, items_count: ItemsCount) -> Result<Self> {
+        let mut result = Vec::with_capacity(256);
+        // the ratio of source.len to mappings.len is generally between 5 and 7,
+        // with most minified ones being > 6 and most unminified ones being < 6;
+        // 6 is a conservative value here.
+        // result.reserve(source.len() / 6);
+
         let mut source_id = 0;
         let mut source_line = 0;
         let mut source_col = 0;
         let mut name_id = 0;
 
         let mut decoder = VlqDecoder::new();
-
-        // the ratio of source.len to mappings.len is generally between 5 and 7,
-        // with most minified ones being > 6 and most unminified ones being < 6;
-        // 6 is a conservative value here.
-        // self.0.reserve(source.len() / 6);
 
         let mut generated_line = 0;
         let mut generated_col = 0;
@@ -196,7 +196,7 @@ impl Mappings {
                                 return Err(Error::UnorderedMappings);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
-                            self.0.push(Mapping::new(generated_line, generated_col));
+                            result.push(Mapping::new(generated_line, generated_col));
                         }
                         4 | 5 => {
                             if nums[0] < 0 {
@@ -223,7 +223,7 @@ impl Mappings {
                                 mapping = mapping.with_name(name_id)
                             }
 
-                            self.0.push(mapping);
+                            result.push(mapping);
                         }
                         _ => return Err(Error::MappingMalformed),
                     }
@@ -233,6 +233,6 @@ impl Mappings {
             generated_col = 0;
         }
 
-        Ok(())
+        Ok(Self(result))
     }
 }

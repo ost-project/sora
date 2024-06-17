@@ -12,6 +12,7 @@ pub struct SourceMapBuilder<'a> {
     pub(crate) file: Option<Cow<'a, str>>,
     pub(crate) mappings: Option<Mappings>,
     pub(crate) names: Option<Vec<Cow<'a, str>>>,
+    pub(crate) source_root: Option<Cow<'a, str>>,
     pub(crate) sources: Option<Vec<Option<Cow<'a, str>>>>,
     pub(crate) sources_content: Option<Vec<Option<Cow<'a, str>>>>,
     #[cfg(feature = "extension")]
@@ -34,6 +35,12 @@ impl<'a> SourceMapBuilder<'a> {
     #[inline(always)]
     pub fn with_names(mut self, names: Vec<Cow<'a, str>>) -> Self {
         self.names = Some(names);
+        self
+    }
+
+    #[inline(always)]
+    pub fn with_source_root(mut self, source_root: Cow<'a, str>) -> Self {
+        self.source_root = Some(source_root);
         self
     }
 
@@ -74,6 +81,7 @@ impl<'a> SourceMapBuilder<'a> {
             file: self.file,
             mappings: self.mappings.unwrap_or_default(),
             names: self.names.unwrap_or_default(),
+            source_root: self.source_root,
             sources: self.sources.unwrap_or_default(),
             sources_content: self.sources_content.unwrap_or_default(),
             #[cfg(feature = "extension")]

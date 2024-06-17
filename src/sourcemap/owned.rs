@@ -26,23 +26,21 @@ impl BorrowedSourceMap<'_> {
 
         let mappings = self.mappings;
 
-        let names = {
-            let mut vec = Vec::with_capacity(self.names.len());
-            vec.extend(self.names.into_iter().map(into_owned));
-            vec
-        };
+        let names = self.names.into_iter().map(into_owned).collect();
 
-        let sources = {
-            let mut vec = Vec::with_capacity(self.sources.len());
-            vec.extend(self.sources.into_iter().map(|n| n.map(into_owned)));
-            vec
-        };
+        let source_root = self.source_root.map(into_owned);
 
-        let sources_content = {
-            let mut vec = Vec::with_capacity(self.sources_content.len());
-            vec.extend(self.sources_content.into_iter().map(|n| n.map(into_owned)));
-            vec
-        };
+        let sources = self
+            .sources
+            .into_iter()
+            .map(|n| n.map(into_owned))
+            .collect();
+
+        let sources_content = self
+            .sources_content
+            .into_iter()
+            .map(|n| n.map(into_owned))
+            .collect();
 
         #[cfg(feature = "extension")]
         let extension = self.extension;
@@ -51,6 +49,7 @@ impl BorrowedSourceMap<'_> {
             file,
             names,
             mappings,
+            source_root,
             sources,
             sources_content,
             #[cfg(feature = "extension")]
