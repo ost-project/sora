@@ -1,6 +1,6 @@
 use crate::finder::MappingFinder;
 use crate::mapping::{Mapping, Position};
-use crate::mappings::{DecodeState, ItemsCount, Mappings};
+use crate::mappings::{ItemsCount, Mappings};
 use crate::sourcemap::raw::RawSourceMap;
 use crate::{Error, Result};
 use simd_json::Buffers;
@@ -277,14 +277,7 @@ impl<'a> BorrowedSourceMap<'a> {
         }
 
         let mut sm = Self::empty();
-        #[cfg(feature = "index-map")]
-        {
-            if raw.sections.is_some() {
-                sm.process_index_map(raw)?;
-                return Ok(sm);
-            }
-        }
-        sm.process_map(raw, Position::min())?;
+        sm.process_map(raw)?;
         Ok(sm)
     }
 
@@ -302,17 +295,15 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     #[inline]
-    fn process_map(&mut self, raw: RawSourceMap<'a>, last_pos: Position) -> Result<()> {
+    fn process_map(&mut self, raw: RawSourceMap<'a>) -> Result<()> {
         self.file = raw.file.map(Cow::Borrowed);
 
-        let start_names_id = self.names.len() as u32;
         if let Some(names) = raw.names {
             let names_len = names.len();
             self.names.reserve(names_len);
             self.names.extend(names.into_iter().map(Cow::Borrowed));
         }
 
-        let start_sources_id = self.sources.len() as u32;
         if let Some(sources) = raw.sources {
             let sources_len = sources.len();
             self.sources.reserve(sources_len);
@@ -361,64 +352,14 @@ impl<'a> BorrowedSourceMap<'a> {
         if let Some(ignore_list) = raw.ignore_list {
             if !ignore_list.is_empty() {
                 self.extension.ignore_list.reserve(ignore_list.len());
-                for (idx, source_id) in ignore_list.into_iter().enumerate() {
-                    let fixed_source_id = source_id + start_sources_id;
-                    if fixed_source_id >= end_sources_id {
-                        return Err(Error::invalid_ignore_list(
-                            end_sources_id,
-                            idx as u32,
-                            source_id,
-                        ));
-                    }
-                    self.extension.ignore_list.push(fixed_source_id);
-                }
+                self.extension.ignore_list.extend(ignore_list);
             }
         }
 
         self.mappings.decode(
             raw.mappings.unwrap_or_default(),
             ItemsCount::new(end_sources_id, end_names_id),
-            &DecodeState {
-                generated_line: last_pos.line,
-                generated_col: last_pos.column,
-                source_id: start_sources_id,
-                name_id: start_names_id,
-            },
         )?;
-
-        Ok(())
-    }
-
-    #[cold]
-    #[cfg(feature = "index-map")]
-    fn process_index_map(&mut self, raw: RawSourceMap<'a>) -> Result<()> {
-        self.file = raw.file.map(Cow::Borrowed);
-
-        let mut last_sec_end_pos = Position::min();
-        for (section_id, section) in raw.sections.unwrap_or_default().into_iter().enumerate() {
-            let section_id = section_id as u32;
-
-            let sec_start_pos = Position {
-                line: section.offset.line,
-                column: section.offset.column,
-            };
-
-            // offset should be less than the last position of the last section
-            if sec_start_pos.lt(&last_sec_end_pos) {
-                return Err(Error::section_error(section_id, Error::UnorderedMappings));
-            }
-
-            match section.map {
-                Some(map) => {
-                    self.process_map(*map, sec_start_pos)
-                        .map_err(|e| Error::section_error(section_id, e))?;
-                    if let Some(mapping) = self.mappings.last() {
-                        last_sec_end_pos = mapping.generated();
-                    }
-                }
-                None => last_sec_end_pos = sec_start_pos,
-            }
-        }
 
         Ok(())
     }

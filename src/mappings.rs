@@ -168,30 +168,13 @@ impl Mappings {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone)]
-pub(crate) struct DecodeState {
-    pub(crate) generated_line: u32,
-    pub(crate) generated_col: u32,
-    pub(crate) source_id: u32,
-    pub(crate) name_id: u32,
-}
-
 impl Mappings {
-    pub(crate) fn decode(
-        &mut self,
-        source: &str,
-        items_count: ItemsCount,
-        state: &DecodeState,
-    ) -> Result<()> {
-        let DecodeState {
-            mut generated_line,
-            mut generated_col,
-            mut source_id,
-            mut name_id,
-        } = *state;
-
+    #[inline(never)]
+    pub(crate) fn decode(&mut self, source: &str, items_count: ItemsCount) -> Result<()> {
+        let mut source_id = 0;
         let mut source_line = 0;
         let mut source_col = 0;
+        let mut name_id = 0;
 
         let mut decoder = VlqDecoder::new();
 
@@ -200,6 +183,8 @@ impl Mappings {
         // 6 is a conservative value here.
         // self.0.reserve(source.len() / 6);
 
+        let mut generated_line = 0;
+        let mut generated_col = 0;
         for line in Splitter::new(source, b';') {
             if !line.is_empty() {
                 for segment in Splitter::new(line, b',') {
@@ -244,7 +229,6 @@ impl Mappings {
                     }
                 }
             }
-
             generated_line += 1;
             generated_col = 0;
         }
