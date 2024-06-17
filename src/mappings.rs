@@ -1,6 +1,6 @@
 use crate::finder::{MappingFinder, MappingFinderImpl};
 use crate::mapping::{Mapping, Position};
-use crate::splitter::Splitter;
+use crate::splitter::MappingSplitter;
 use crate::vlq::{VlqDecoder, VlqEncoder};
 use crate::{Error, Result};
 use std::io;
@@ -185,18 +185,21 @@ impl Mappings {
 
         let mut generated_line = 0;
         let mut generated_col = 0;
-        for line in Splitter::new(source, b';') {
-            if !line.is_empty() {
-                for segment in Splitter::new(line, b',') {
-                    let nums = decoder.decode(segment)?;
 
+        let splitter = MappingSplitter::new(source);
+
+        for (segment, next_new_line) in splitter {
+            if !segment.is_empty() {
+                let nums = decoder.decode(segment)?;
+
+                let mapping =
                     match nums.len() {
                         1 => {
                             if nums[0] < 0 {
                                 return Err(Error::UnorderedMappings);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
-                            result.push(Mapping::new(generated_line, generated_col));
+                            Mapping::new(generated_line, generated_col)
                         }
                         4 | 5 => {
                             if nums[0] < 0 {
@@ -223,14 +226,17 @@ impl Mappings {
                                 mapping = mapping.with_name(name_id)
                             }
 
-                            result.push(mapping);
+                            mapping
                         }
                         _ => return Err(Error::MappingMalformed),
-                    }
-                }
+                    };
+                result.push(mapping);
             }
-            generated_line += 1;
-            generated_col = 0;
+
+            if next_new_line {
+                generated_line += 1;
+                generated_col = 0;
+            }
         }
 
         Ok(Self(result))

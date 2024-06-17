@@ -1,58 +1,59 @@
-use memchr::Memchr;
+use memchr::Memchr2;
 
 #[derive(Debug)]
-pub(crate) struct Splitter<'a> {
+pub(crate) struct MappingSplitter<'a> {
     string: &'a str,
-    last_end: usize,
-    memchr: Memchr<'a>,
+    cur_start: usize,
+    memchr: Memchr2<'a>,
 }
 
-impl<'a> Splitter<'a> {
-    pub fn new(string: &'a str, splitter: u8) -> Self {
+impl<'a> MappingSplitter<'a> {
+    pub fn new(string: &'a str) -> Self {
         Self {
             string,
-            memchr: memchr::memchr_iter(splitter, string.as_bytes()),
-            last_end: 0,
+            memchr: memchr::memchr2_iter(b';', b',', string.as_bytes()),
+            cur_start: 0,
         }
     }
 }
 
-impl<'a> Iterator for Splitter<'a> {
-    type Item = &'a str;
+impl<'a> Iterator for MappingSplitter<'a> {
+    // segment, next_new_line
+    type Item = (&'a str, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next_end = match self.memchr.next() {
+        let (cur_end, new_line) = match self.memchr.next() {
             None => {
-                if self.last_end > self.string.len() {
+                if self.cur_start > self.string.len() {
                     return None;
                 }
-                self.string.len()
+                (self.string.len(), false)
             }
-            Some(end) => end,
+            Some(end) => {
+                // SAFETY: end never >= self.string.len()
+                let ch = unsafe { *self.string.as_bytes().get_unchecked(end) };
+                (end, ch == b';')
+            }
         };
-        // SAFETY: next_end never > self.string.len()
-        let s = unsafe { self.string.get_unchecked(self.last_end..next_end) };
-        self.last_end = next_end + 1;
-        Some(s)
+        // SAFETY: cur_end never > self.string.len()
+        let s = unsafe { self.string.get_unchecked(self.cur_start..cur_end) };
+        self.cur_start = cur_end + 1;
+        Some((s, new_line))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Splitter;
+    use super::MappingSplitter;
 
     #[test]
     fn test_splitter() {
         let text =
       ";;yZCTnK,IAAO5F,gBAAkB,YACzB,IAAOC,YAAcC,UACrB;IAAOC,oBAAsB,YAE7B,EAAQ,QAER,EAAQ;;cAAe";
 
-        assert_eq!(
-            Splitter::new(text, b';').collect::<Vec<_>>().join(";"),
-            text
-        );
-        assert_eq!(
-            Splitter::new(text, b',').collect::<Vec<_>>().join(","),
-            text
-        );
+        let result = MappingSplitter::new(text)
+            .map(|(s, n)| format!("[{}:{}]", s, n))
+            .collect::<String>();
+        insta::assert_snapshot!(result, @"[:true][:true][yZCTnK:false][IAAO5F:false][gBAAkB:false][YACzB:false][IAAOC:false][YAAcC:false][UACrB:true][IAAOC:false][oBAAsB:false][YAE7B:false][EAAQ:false][QAER:false][EAAQ:true][:true][cAAe:false]");
     }
 }
