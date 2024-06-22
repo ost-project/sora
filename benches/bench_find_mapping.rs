@@ -1,7 +1,5 @@
-mod utils;
-
 use criterion::{criterion_group, criterion_main, Criterion};
-use utils::*;
+use std::fs;
 
 macro_rules! assert_pos {
     (sora: $actual:expr, $expected:ident) => {
@@ -23,7 +21,7 @@ macro_rules! assert_pos {
 }
 
 fn benchmark_find_mapping(c: &mut Criterion) {
-    let buf = read_file("data/tsc.min.js.map");
+    let buf = fs::read("data/tsc.min.js.map").unwrap();
 
     let map_samples = &[
         ((340, 5636), (68, 619, 8)),

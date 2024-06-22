@@ -29,6 +29,8 @@ insta = "1.39"
 criterion = "0.5"
 sourcemap = { git = "https://github.com/getsentry/rust-sourcemap.git", package = "sourcemap" }
 
+mimalloc = "0.1"
+
 [features]
 builder = []
 index-map = []

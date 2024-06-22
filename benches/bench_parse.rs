@@ -1,7 +1,12 @@
-mod utils;
-
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use utils::*;
+use std::fs;
+
+// Parse is a benchmark that is highly affected by memory allocation performance.
+// To reduce the impact, mimalloc is used as the allocator,
+// so `owned` and `sourcemap` will be faster than using the default allocator.
+use mimalloc::MiMalloc;
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn parse_sora_borrowed(mut data: Vec<u8>) {
     black_box(sora::BorrowedSourceMap::from_slice(&mut data).unwrap());
@@ -18,10 +23,10 @@ fn parse_sourcemap(data: Vec<u8>) {
 fn benchmark_parse(c: &mut Criterion) {
     #[rustfmt::skip]
     let cases = [
-        ("tiny", read_file("data/tiny.js.map"), BatchSize::SmallInput),
-        ("jquery", read_file("data/jquery.min.js.map"), BatchSize::SmallInput),
-        ("antd", read_file("data/antd.min.js.map"), BatchSize::LargeInput),
-        ("tsc", read_file("data/tsc.min.js.map"), BatchSize::LargeInput)
+        ("tiny", fs::read("data/tiny.js.map").unwrap(), BatchSize::SmallInput),
+        ("jquery", fs::read("data/jquery.min.js.map").unwrap(), BatchSize::SmallInput),
+        ("antd", fs::read("data/antd.min.js.map").unwrap(), BatchSize::LargeInput),
+        ("tsc", fs::read("data/tsc.min.js.map").unwrap(), BatchSize::LargeInput)
     ];
     for (name, buf, batch_size) in cases {
         let mut bg = c.benchmark_group(format!("parse({name})"));
