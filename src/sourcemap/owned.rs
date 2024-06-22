@@ -42,8 +42,8 @@ impl BorrowedSourceMap<'_> {
             .map(|n| n.map(into_owned))
             .collect();
 
-        #[cfg(feature = "extension")]
-        let extension = self.extension;
+        #[cfg(feature = "ignore_list")]
+        let ignore_list = self.ignore_list;
 
         SourceMap {
             file,
@@ -52,8 +52,8 @@ impl BorrowedSourceMap<'_> {
             source_root,
             sources,
             sources_content,
-            #[cfg(feature = "extension")]
-            extension,
+            #[cfg(feature = "ignore_list")]
+            ignore_list,
         }
     }
 }

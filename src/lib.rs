@@ -59,9 +59,3 @@ pub use finder::*;
 pub use mapping::*;
 pub use mappings::*;
 pub use sourcemap::*;
-
-#[cfg(feature = "extension")]
-mod extension;
-
-#[cfg(feature = "extension")]
-pub use crate::extension::*;

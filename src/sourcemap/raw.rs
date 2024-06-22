@@ -8,7 +8,7 @@ pub(crate) struct RawSourceMap<'a> {
     pub sources_content: Option<Vec<Option<&'a str>>>,
     pub names: Option<Vec<&'a str>>,
     pub mappings: Option<&'a str>,
-    #[cfg(feature = "extension")]
+    #[cfg(feature = "ignore_list")]
     pub ignore_list: Option<Vec<u32>>,
 }
 

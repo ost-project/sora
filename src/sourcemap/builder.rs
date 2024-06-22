@@ -15,8 +15,8 @@ pub struct SourceMapBuilder<'a> {
     pub(crate) source_root: Option<Cow<'a, str>>,
     pub(crate) sources: Option<Vec<Option<Cow<'a, str>>>>,
     pub(crate) sources_content: Option<Vec<Option<Cow<'a, str>>>>,
-    #[cfg(feature = "extension")]
-    pub(crate) extension: crate::Extension,
+    #[cfg(feature = "ignore_list")]
+    pub(crate) ignore_list: Option<Vec<u32>>,
 }
 
 impl<'a> SourceMapBuilder<'a> {
@@ -56,10 +56,10 @@ impl<'a> SourceMapBuilder<'a> {
         self
     }
 
-    #[cfg(feature = "extension")]
+    #[cfg(feature = "ignore_list")]
     #[inline(always)]
-    pub fn with_extension(mut self, extension: crate::Extension) -> Self {
-        self.extension = extension;
+    pub fn with_ignore_list(mut self, ignore_list: Vec<u32>) -> Self {
+        self.ignore_list = Some(ignore_list);
         self
     }
 
@@ -84,8 +84,8 @@ impl<'a> SourceMapBuilder<'a> {
             source_root: self.source_root,
             sources: self.sources.unwrap_or_default(),
             sources_content: self.sources_content.unwrap_or_default(),
-            #[cfg(feature = "extension")]
-            extension: self.extension,
+            #[cfg(feature = "ignore_list")]
+            ignore_list: self.ignore_list.unwrap_or_default(),
         }
     }
 }

@@ -27,18 +27,6 @@ pub enum ParseError {
         sources_len: u32,
         sources_content_len: u32,
     },
-    #[cfg(feature = "extension")]
-    #[error(
-        "source map has {} sources but ignoreList[{}] references to {}",
-        sources_len,
-        idx,
-        reference
-    )]
-    MismatchIgnoreList {
-        sources_len: u32,
-        idx: u32,
-        reference: u32,
-    },
 }
 
 impl From<simd_json::Error> for ParseError {
@@ -64,17 +52,5 @@ pub enum ValidateError {
     MismatchSourcesContent {
         sources_len: u32,
         sources_content_len: u32,
-    },
-    #[cfg(feature = "extension")]
-    #[error(
-        "source map has {} sources but ignoreList[{}] references to {}",
-        sources_len,
-        idx,
-        reference
-    )]
-    MismatchIgnoreList {
-        sources_len: u32,
-        idx: u32,
-        reference: u32,
     },
 }

@@ -67,8 +67,8 @@ pub struct BorrowedSourceMap<'a> {
     pub(crate) source_root: Option<Cow<'a, str>>,
     pub(crate) sources: Vec<Option<Cow<'a, str>>>,
     pub(crate) sources_content: Vec<Option<Cow<'a, str>>>,
-    #[cfg(feature = "extension")]
-    pub(crate) extension: crate::Extension,
+    #[cfg(feature = "ignore_list")]
+    pub(crate) ignore_list: Vec<u32>,
 }
 
 impl Debug for BorrowedSourceMap<'_> {
@@ -156,8 +156,10 @@ impl<'a> BorrowedSourceMap<'a> {
                 sources_content_len,
             });
         }
-        #[cfg(feature = "extension")]
-        self.extension.validate(sources_len)?;
+
+        // Note:
+        // `ignore_list` is an additional feature that does not hinder the primary functionality
+        // of source maps, so it is not subject to validation.
 
         self.mappings
             .validate(ItemsCount::new(sources_len, names_len))?;
@@ -218,15 +220,18 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "extension")]
-    pub fn extension(&self) -> &crate::Extension {
-        &self.extension
+    #[cfg(feature = "ignore_list")]
+    pub fn ignore_list(&self) -> &[u32] {
+        &self.ignore_list
     }
 
+    /// This function directly returns &mut Vec and is not marked as unsafe
+    /// because arbitrary modifications to the [ignore_list] will not compromise
+    /// the primary functionality of source maps.
     #[inline]
-    #[cfg(feature = "extension")]
-    pub fn extension_mut(&mut self) -> &mut crate::Extension {
-        &mut self.extension
+    #[cfg(feature = "ignore_list")]
+    pub fn ignore_list_mut(&mut self) -> &mut Vec<u32> {
+        &mut self.ignore_list
     }
 }
 
@@ -310,8 +315,8 @@ impl<'a> BorrowedSourceMap<'a> {
 
         let names_len = names.len();
 
-        #[cfg(feature = "extension")]
-        let extension = crate::Extension::from_raw(raw.ignore_list);
+        #[cfg(feature = "ignore_list")]
+        let ignore_list = raw.ignore_list.unwrap_or_default();
 
         let mappings = Mappings::decode(
             raw.mappings.unwrap_or_default(),
@@ -325,8 +330,8 @@ impl<'a> BorrowedSourceMap<'a> {
             sources_content,
             names,
             mappings,
-            #[cfg(feature = "extension")]
-            extension,
+            #[cfg(feature = "ignore_list")]
+            ignore_list,
         })
     }
 }
@@ -377,10 +382,10 @@ impl BorrowedSourceMap<'_> {
         self.mappings.encode(w)?;
         w.write_all(br#"""#)?;
 
-        #[cfg(feature = "extension")]
-        if !self.extension.ignore_list.is_empty() {
+        #[cfg(feature = "ignore_list")]
+        if !self.ignore_list.is_empty() {
             w.write_all(br#","ignoreList":"#)?;
-            self.extension.ignore_list.json_write(w)?;
+            self.ignore_list.json_write(w)?;
         }
 
         w.write_all(br#"}"#)

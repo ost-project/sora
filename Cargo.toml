@@ -34,7 +34,7 @@ mimalloc = "0.1"
 [features]
 builder = []
 index-map = []
-extension = []
+ignore_list = []
 
 [profile.bench]
 lto = true
