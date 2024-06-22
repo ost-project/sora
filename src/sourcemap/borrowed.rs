@@ -2,8 +2,7 @@ use crate::finder::MappingFinder;
 use crate::mapping::{Mapping, Position};
 use crate::mappings::{ItemsCount, Mappings};
 use crate::sourcemap::raw::RawSourceMap;
-use crate::{Error, Result};
-use simd_json::Buffers;
+use crate::{ParseError, ParseResult, ValidateError, ValidateResult};
 use simd_json_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
@@ -146,21 +145,24 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     /// Validates the source map.
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> ValidateResult<()> {
         let sources_len = self.sources.len() as u32;
         let sources_content_len = self.sources_content.len() as u32;
         let names_len = self.names.len() as u32;
 
         if sources_content_len != sources_len {
-            return Err(Error::invalid_sources_content(
+            return Err(ValidateError::MismatchSourcesContent {
                 sources_len,
                 sources_content_len,
-            ));
+            });
         }
         #[cfg(feature = "extension")]
         self.extension.validate(sources_len)?;
+
         self.mappings
-            .validate(ItemsCount::new(sources_len, names_len))
+            .validate(ItemsCount::new(sources_len, names_len))?;
+
+        Ok(())
     }
 }
 
@@ -272,9 +274,9 @@ impl<'a> BorrowedSourceMap<'a> {
 }
 
 impl<'a> BorrowedSourceMap<'a> {
-    fn from_raw(raw: RawSourceMap<'a>) -> Result<Self> {
+    fn from_raw(raw: RawSourceMap<'a>) -> ParseResult<Self> {
         if !matches!(raw.version, Some(3)) {
-            return Err(Error::UnsupportedFormat);
+            return Err(ParseError::UnsupportedFormat);
         }
 
         let file = raw.file.map(Cow::Borrowed);
@@ -291,10 +293,10 @@ impl<'a> BorrowedSourceMap<'a> {
         let sources_content = if let Some(sources_content) = raw.sources_content {
             let sources_content_len = sources_content.len();
             if sources_content_len != sources_len {
-                return Err(Error::invalid_sources_content(
-                    sources_len as u32,
-                    sources_content_len as u32,
-                ));
+                return Err(ParseError::MismatchSourcesContent {
+                    sources_len: sources_len as u32,
+                    sources_content_len: sources_content_len as u32,
+                });
             }
             Vec::from_iter(sources_content.into_iter().map(|s| s.map(Cow::Borrowed)))
         } else {
@@ -335,15 +337,8 @@ impl<'a> BorrowedSourceMap<'a> {
     /// The slice is mutable to facilitate in-place replacement of escape characters
     /// in the JSON string, allowing maximum data borrowing.
     #[inline]
-    pub fn from_slice(json: &'a mut [u8]) -> Result<Self> {
+    pub fn from_slice(json: &'a mut [u8]) -> ParseResult<Self> {
         Self::from_raw(RawSourceMap::from_slice(json)?)
-    }
-
-    /// Similar to [Self::from_slice],
-    /// but reuses a buffer for strings to be copied in and out if needed.
-    #[inline]
-    pub fn from_slice_with_buffers(json: &'a mut [u8], buffers: &mut Buffers) -> Result<Self> {
-        Self::from_raw(RawSourceMap::from_slice_with_buffers(json, buffers)?)
     }
 
     /// Creates a new `BorrowedSourceMap` from a JSON string.
@@ -352,7 +347,7 @@ impl<'a> BorrowedSourceMap<'a> {
     /// in the JSON string, allowing maximum data borrowing.
     #[inline]
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(json: &'a mut str) -> Result<Self> {
+    pub fn from_str(json: &'a mut str) -> ParseResult<Self> {
         Self::from_raw(RawSourceMap::from_str(json)?)
     }
 }

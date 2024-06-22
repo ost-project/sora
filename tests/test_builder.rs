@@ -1,6 +1,6 @@
 #![cfg(feature = "builder")]
 
-use sora::{Error, Mapping, Mappings, SourceMap};
+use sora::{Mapping, Mappings, SourceMap, ValidateError};
 use std::borrow::Cow;
 
 #[test]
@@ -21,5 +21,8 @@ fn test_sourcemap_builder() {
         .with_sources(vec![Some(Cow::Borrowed("a.js"))])
         .with_sources_content(vec![None, None])
         .build();
-    assert!(matches!(err, Err(Error::InvalidSourcesContent { .. })))
+    assert!(matches!(
+        err,
+        Err(ValidateError::MismatchSourcesContent { .. })
+    ))
 }

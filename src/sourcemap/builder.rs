@@ -1,4 +1,4 @@
-use crate::{BorrowedSourceMap, Mappings, Result};
+use crate::{BorrowedSourceMap, Mappings, ValidateResult};
 use std::borrow::Cow;
 
 impl<'a> BorrowedSourceMap<'a> {
@@ -63,7 +63,7 @@ impl<'a> SourceMapBuilder<'a> {
         self
     }
 
-    pub fn build(self) -> Result<BorrowedSourceMap<'a>> {
+    pub fn build(self) -> ValidateResult<BorrowedSourceMap<'a>> {
         // SAFETY: just reuse code
         let v = unsafe { self.build_unchecked() };
         v.validate()?;

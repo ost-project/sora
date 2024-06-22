@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{ParseError, ParseResult};
 use std::io;
 use std::io::Write;
 
@@ -26,7 +26,7 @@ impl VlqDecoder {
         Self { buf: [0; 5] }
     }
 
-    pub fn decode(&mut self, segment: &str) -> Result<&[i64]> {
+    pub fn decode(&mut self, segment: &str) -> ParseResult<&[i64]> {
         let mut len = 0;
 
         let mut cur_value = 0;
@@ -35,12 +35,14 @@ impl VlqDecoder {
         for byte in segment.bytes() {
             let value = BASE64_VALUES[byte as usize] as i64;
             let val = value & 0b11111;
-            cur_value += val.checked_shl(shift).ok_or(Error::MappingOverflow)?;
+            cur_value += val
+                .checked_shl(shift)
+                .ok_or_else(|| ParseError::MappingMalformed(segment.to_owned()))?;
             shift += 5;
 
             if value & 0b100000 == 0 {
                 if len > 4 {
-                    return Err(Error::MappingOverflow);
+                    return Err(ParseError::MappingMalformed(segment.to_owned()));
                 }
 
                 let is_negative = (cur_value & 1) == 1;
@@ -55,8 +57,8 @@ impl VlqDecoder {
             }
         }
 
-        if shift != 0 {
-            Err(Error::MappingMalformed)
+        if shift != 0 || !matches!(len, 1 | 4 | 5) {
+            Err(ParseError::MappingMalformed(segment.to_owned()))
         } else {
             // SAFETY: self.len is guaranteed to be <= 5 in the above code
             Ok(unsafe { self.buf.get_unchecked(..len) })
@@ -108,7 +110,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{VlqDecoder, VlqEncoder};
-    use crate::Error;
+    use crate::ParseError;
 
     fn encode_helper(vlq: &[i64]) -> Vec<u8> {
         let mut buf = Vec::new();
@@ -124,16 +126,6 @@ mod tests {
         let mut decoder = VlqDecoder::new();
         assert_eq!(&encode_helper(decoder.decode("AAAA").unwrap()), b"AAAA");
         assert_eq!(&encode_helper(decoder.decode("Q").unwrap()), b"Q");
-        assert_eq!(&encode_helper(decoder.decode("").unwrap()), b"");
-    }
-
-    #[test]
-    fn test_vlq_decode_overflow() {
-        let mut decoder = VlqDecoder::new();
-        assert!(matches!(
-            decoder.decode("AAAAAAAAAAA"),
-            Err(Error::MappingOverflow)
-        ));
     }
 
     #[test]
@@ -141,11 +133,20 @@ mod tests {
         let mut decoder = VlqDecoder::new();
         assert!(matches!(
             decoder.decode("aAC5B9iiC/"),
-            Err(Error::MappingMalformed)
+            Err(ParseError::MappingMalformed(..))
         ));
         assert!(matches!(
             decoder.decode("你好"),
-            Err(Error::MappingMalformed)
+            Err(ParseError::MappingMalformed(..))
+        ));
+        assert!(matches!(
+            decoder.decode(""),
+            Err(ParseError::MappingMalformed(..))
+        ));
+        // overflow
+        assert!(matches!(
+            decoder.decode("AAAAAAAAAAA"),
+            Err(ParseError::MappingMalformed(..))
         ));
     }
 }

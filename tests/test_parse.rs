@@ -1,6 +1,6 @@
 mod utils;
 
-use sora::{BorrowedSourceMap, Error, Mapping, SourceMap};
+use sora::{BorrowedSourceMap, Mapping, ParseError, SourceMap};
 use std::borrow::Cow;
 use utils::read_file;
 
@@ -8,12 +8,12 @@ use utils::read_file;
 fn test_parse() {
     assert!(matches!(
         SourceMap::from(b"".to_vec()),
-        Err(Error::SyntaxError(..))
+        Err(ParseError::Syntax(..))
     ));
 
     assert!(matches!(
         SourceMap::from(b"{}".to_vec()),
-        Err(Error::UnsupportedFormat)
+        Err(ParseError::UnsupportedFormat)
     ));
 
     let sm = SourceMap::from(read_file("data/sum.js.map")).unwrap();

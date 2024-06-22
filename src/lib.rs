@@ -60,8 +60,6 @@ pub use mapping::*;
 pub use mappings::*;
 pub use sourcemap::*;
 
-pub use simd_json::Buffers;
-
 #[cfg(feature = "extension")]
 mod extension;
 

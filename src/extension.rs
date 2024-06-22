@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::ValidateError;
 
 /// Represents rarely-used source map features defined in <https://tc39.es/source-map>
 ///
@@ -25,14 +25,18 @@ impl Extension {
         Self { ignore_list }
     }
 
-    pub(crate) fn validate(&self, sources_count: u32) -> Result<()> {
+    pub(crate) fn validate(&self, sources_count: u32) -> Result<(), ValidateError> {
         if let Some((idx, &id)) = self
             .ignore_list
             .iter()
             .enumerate()
             .find(|&(_, &id)| id >= sources_count)
         {
-            return Err(Error::invalid_ignore_list(sources_count, idx as u32, id));
+            return Err(ValidateError::MismatchIgnoreList {
+                sources_len: sources_count,
+                idx: idx as u32,
+                reference: id,
+            });
         }
 
         Ok(())
@@ -72,5 +76,6 @@ mod builder {
         }
     }
 }
+
 #[cfg(feature = "builder")]
 pub use builder::*;

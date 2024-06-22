@@ -2,7 +2,8 @@ use crate::finder::{MappingFinder, MappingFinderImpl};
 use crate::mapping::{Mapping, Position};
 use crate::splitter::MappingSplitter;
 use crate::vlq::{VlqDecoder, VlqEncoder};
-use crate::{Error, Result};
+use crate::{ParseError, ParseResult, ValidateError, ValidateResult};
+use std::hint::unreachable_unchecked;
 use std::io;
 use std::io::Write;
 use std::ops::Deref;
@@ -137,7 +138,7 @@ impl Mappings {
         Ok(())
     }
 
-    pub(crate) fn validate(&self, items_count: ItemsCount) -> Result<()> {
+    pub(crate) fn validate(&self, items_count: ItemsCount) -> ValidateResult<()> {
         // validate mappings
         // 1. generated pos is in order
         // 2. source_id has corresponding source
@@ -148,17 +149,17 @@ impl Mappings {
         for mapping in &self.0 {
             let pos = mapping.generated();
             if pos.lt(&last_generated_pos) {
-                return Err(Error::UnorderedMappings);
+                return Err(ValidateError::MappingsUnordered);
             }
             last_generated_pos = pos;
             if let Some(source_info) = mapping.source_info() {
                 if source_info.id >= items_count.sources {
-                    return Err(Error::UnknownSourceReference(source_info.id));
+                    return Err(ValidateError::UnknownSourceReference(source_info.id));
                 }
 
                 if let Some(name_id) = mapping.name_info() {
                     if name_id >= items_count.names {
-                        return Err(Error::UnknownNameReference(name_id));
+                        return Err(ValidateError::UnknownNameReference(name_id));
                     }
                 }
             }
@@ -169,7 +170,7 @@ impl Mappings {
 }
 
 impl Mappings {
-    pub(crate) fn decode(source: &str, items_count: ItemsCount) -> Result<Self> {
+    pub(crate) fn decode(source: &str, items_count: ItemsCount) -> ParseResult<Self> {
         let mut result = Vec::with_capacity(256);
         // the ratio of source.len to mappings.len is generally between 5 and 7,
         // with most minified ones being > 6 and most unminified ones being < 6;
@@ -196,20 +197,20 @@ impl Mappings {
                     match nums.len() {
                         1 => {
                             if nums[0] < 0 {
-                                return Err(Error::UnorderedMappings);
+                                return Err(ParseError::MappingsUnordered);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
                             Mapping::new(generated_line, generated_col)
                         }
                         4 | 5 => {
                             if nums[0] < 0 {
-                                return Err(Error::UnorderedMappings);
+                                return Err(ParseError::MappingsUnordered);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
 
                             source_id = (source_id as i64 + nums[1]) as u32;
                             if source_id >= items_count.sources {
-                                return Err(Error::UnknownSourceReference(source_id));
+                                return Err(ParseError::UnknownSourceReference(source_id));
                             }
 
                             source_line = (source_line as i64 + nums[2]) as u32;
@@ -221,14 +222,19 @@ impl Mappings {
                             if nums.len() == 5 {
                                 name_id = (name_id as i64 + nums[4]) as u32;
                                 if name_id >= items_count.names {
-                                    return Err(Error::UnknownNameReference(name_id));
+                                    return Err(ParseError::UnknownNameReference(name_id));
                                 }
                                 mapping = mapping.with_name(name_id)
                             }
 
                             mapping
                         }
-                        _ => return Err(Error::MappingMalformed),
+                        _ => {
+                            unsafe {
+                                // SAFETY: decoder.decode() ensures valid length
+                                unreachable_unchecked()
+                            }
+                        }
                     };
                 result.push(mapping);
             }

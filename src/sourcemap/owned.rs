@@ -1,5 +1,5 @@
 use crate::sourcemap::BorrowedSourceMap;
-use crate::Result;
+use crate::ParseResult;
 use std::borrow::Cow;
 
 /// `SourceMap` is a source map that owns all its internal strings,
@@ -10,7 +10,7 @@ pub type SourceMap = BorrowedSourceMap<'static>;
 impl SourceMap {
     /// Creates a new owned [SourceMap] from a JSON buffer.
     #[inline]
-    pub fn from(mut source: Vec<u8>) -> Result<Self> {
+    pub fn from(mut source: Vec<u8>) -> ParseResult<Self> {
         Ok(BorrowedSourceMap::from_slice(&mut source)?.into_owned())
     }
 }
