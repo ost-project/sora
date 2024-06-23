@@ -3,7 +3,6 @@ use crate::mapping::{Mapping, Position};
 use crate::splitter::MappingSplitter;
 use crate::vlq::{VlqDecoder, VlqEncoder};
 use crate::{ParseError, ParseResult, ValidateError, ValidateResult};
-use std::hint::unreachable_unchecked;
 use std::io;
 use std::io::Write;
 use std::ops::Deref;
@@ -278,12 +277,7 @@ impl<'a> MappingsDecoder<'a> {
 
                             mapping
                         }
-                        _ => {
-                            unsafe {
-                                // SAFETY: decoder.decode() ensures valid length
-                                unreachable_unchecked()
-                            }
-                        }
+                        _ => return Err(ParseError::MappingMalformed(segment.to_owned())),
                     };
                 buffer.push(mapping);
             }

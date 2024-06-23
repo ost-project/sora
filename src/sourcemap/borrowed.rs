@@ -358,7 +358,7 @@ impl<'a> BorrowedSourceMap<'a> {
         #[cfg(feature = "ignore_list")]
         let mut ignore_list = vec![];
 
-        let mut last_section_end_pos = Position::min();
+        let mut last_section_end_pos: Option<Position> = None;
         for section in sections.into_iter() {
             let current_section_start_pos = Position {
                 line: section.offset.line,
@@ -366,7 +366,7 @@ impl<'a> BorrowedSourceMap<'a> {
             };
 
             // offset should be greater than the last position of the last section
-            if current_section_start_pos.lt(&last_section_end_pos) {
+            if last_section_end_pos.is_some_and(|ref pos| current_section_start_pos.le(pos)) {
                 return Err(ParseError::MappingsUnordered);
             }
 
@@ -451,14 +451,12 @@ impl<'a> BorrowedSourceMap<'a> {
                         )
                         .decode_into(&mut mappings)?;
 
-                    if let Some(mapping) = mappings.last() {
-                        last_section_end_pos = mapping.generated();
-                    }
+                    last_section_end_pos = mappings.last().map(|m| m.generated());
                 }
                 None => {
                     // external maps referenced via URL are not supported,
                     // silently ignored without error.
-                    last_section_end_pos = current_section_start_pos
+                    last_section_end_pos = Some(current_section_start_pos)
                 }
             }
         }

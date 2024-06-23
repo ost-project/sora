@@ -57,7 +57,7 @@ impl VlqDecoder {
             }
         }
 
-        if shift != 0 || !matches!(len, 1 | 4 | 5) {
+        if shift != 0 {
             Err(ParseError::MappingMalformed(segment.to_owned()))
         } else {
             // SAFETY: self.len is guaranteed to be <= 5 in the above code
@@ -126,6 +126,7 @@ mod tests {
         let mut decoder = VlqDecoder::new();
         assert_eq!(&encode_helper(decoder.decode("AAAA").unwrap()), b"AAAA");
         assert_eq!(&encode_helper(decoder.decode("Q").unwrap()), b"Q");
+        assert_eq!(&encode_helper(decoder.decode("").unwrap()), b"");
     }
 
     #[test]
@@ -137,10 +138,6 @@ mod tests {
         ));
         assert!(matches!(
             decoder.decode("你好"),
-            Err(ParseError::MappingMalformed(..))
-        ));
-        assert!(matches!(
-            decoder.decode(""),
             Err(ParseError::MappingMalformed(..))
         ));
         // overflow
