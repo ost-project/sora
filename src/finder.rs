@@ -10,8 +10,7 @@ type FinderState = (
     usize,
 );
 
-/// `MappingFinder` is a helper struct for finding mappings within a [SourceMap](crate::SourceMap)
-/// or [BorrowedSourceMap](crate::BorrowedSourceMap).
+/// `MappingFinder` is a helper struct for finding mappings within a [BorrowedSourceMap](crate::BorrowedSourceMap).
 ///
 /// It is highly efficient for frequent mapping findings,
 /// especially when traversing the source map in small increments (e.g., sequentially

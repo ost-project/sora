@@ -2,7 +2,7 @@ use crate::sourcemap::BorrowedSourceMap;
 use crate::ParseResult;
 use std::borrow::Cow;
 
-/// `SourceMap` is a source map that owns all its internal strings,
+/// `SourceMap` is a type alias to [BorrowedSourceMap] but owns all its internal strings,
 /// providing a more straightforward and safe API for
 /// users who do not need to manage the lifetimes of the strings manually.
 pub type SourceMap = BorrowedSourceMap<'static>;

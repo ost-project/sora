@@ -27,7 +27,7 @@
 //!
 //! ### `SourceMap`
 //!
-//! [SourceMap] is a source map that owns all its internal strings,
+//! [SourceMap] is a type alias to [BorrowedSourceMap] but owns all its internal strings,
 //! providing a more straightforward and safe API for users who do not need
 //! to manage the lifetimes of the strings manually.
 //!
@@ -43,7 +43,7 @@
 //!
 //! - `builder`: Enables [SourceMapBuilder] and functions like [Mappings::new] for manual construction of source maps.
 //! - `index-map`: Enables support for index maps, as specified in [spec](https://tc39.es/source-map/#index-map).
-//! - `extension`: Enables rarely-used source map features as defined in [spec](https://tc39.es/source-map), including `ignoreList`.
+//! - `ignore_list`: Enables support for [ignoreList](https://tc39.es/source-map/#ignorelist).
 //!
 
 mod error;

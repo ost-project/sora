@@ -13,7 +13,7 @@ use std::iter::repeat_with;
 /// `BorrowedSourceMap` is a source map containing borrowed or owned strings.
 ///
 /// For a source map that owns all its internal strings, see [SourceMap](crate::SourceMap).
-/// This struct can be converted into it using [Into::into].
+/// This struct can be converted into it using [into_owned](BorrowedSourceMap::into_owned).
 ///
 /// # Methods
 ///
@@ -22,22 +22,25 @@ use std::iter::repeat_with;
 /// You can create a `BorrowedSourceMap` using the following methods:
 /// - [`BorrowedSourceMap::from_str`]
 /// - [`BorrowedSourceMap::from_slice`]
-/// - [`BorrowedSourceMap::from_slice_with_buffers`]
 ///
-/// These methods take mutable references as parameters because they may modify
+/// These methods take **mutable** references as parameters because they may modify
 /// the data in place.
 ///
 /// The parsing supports index maps if feature `index-map` enabled,
-/// but sections will not be retained, and maps will be flattened as regular source maps.
+/// but sections will not be retained, and sub-maps will be flattened into a regular source map.
+///
+/// For [SourceMap](crate::SourceMap), there is a [from](BorrowedSourceMap::from) method that
+/// consumes the ownership of input for parsing.
 ///
 /// ## Construction
 ///
 /// When the `builder` feature is enabled, [SourceMapBuilder](crate::SourceMapBuilder) is
-/// available to construct `BorrowedSourceMap` and [SourceMap](crate::SourceMap).
+/// available to construct `BorrowedSourceMap`.
 ///
 /// ## Access & Modification
 ///
 /// The structure provides several methods to access and modify internal data, such as:
+/// - [`source_at`](BorrowedSourceMap::source_at)
 /// - [`sources`](BorrowedSourceMap::sources)
 /// - [`sources_mut`](BorrowedSourceMap::sources_mut)
 /// - unsafe [`sources_mut2`](BorrowedSourceMap::sources_mut2)
@@ -247,8 +250,7 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     /// This function directly returns &mut Vec and is not marked as unsafe
-    /// because arbitrary modifications to the [ignore_list] will not compromise
-    /// the primary functionality of source maps.
+    /// because modifications to ignore_list will not break the primary functionality of source maps.
     #[inline]
     #[cfg(feature = "ignore_list")]
     pub fn ignore_list_mut(&mut self) -> &mut Vec<u32> {
