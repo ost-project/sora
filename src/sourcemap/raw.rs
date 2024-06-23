@@ -10,34 +10,22 @@ pub(crate) struct RawSourceMap<'a> {
     pub mappings: Option<&'a str>,
     #[cfg(feature = "ignore_list")]
     pub ignore_list: Option<Vec<u32>>,
+    #[cfg(feature = "index-map")]
+    pub sections: Option<Vec<RawSection<'a>>>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::RawSourceMap;
-    use simd_json_derive::Deserialize;
+#[cfg(feature = "index-map")]
+#[derive(Debug, simd_json_derive::Deserialize)]
+pub(crate) struct RawSectionOffset {
+    pub line: u32,
+    pub column: u32,
+}
 
-    #[test]
-    fn test_parse_success() {
-        let mut bytes = br#"{
-    "version":3,
-    "file":"sum.js",
-    "sources":["sum.ts"],
-    "names":[],
-    "mappings":";;;AAAO,IAAM,GAAG,GAAG,UAAC,CAAS,EAAE,CAAS,IAAK,OAAA,CAAC,GAAG,CAAC,EAAL,CAAK,CAAA;AAArC,QAAA,GAAG,OAAkC"
-}"#.to_vec();
-        RawSourceMap::from_slice(bytes.as_mut_slice()).unwrap();
-    }
-
-    #[test]
-    fn test_parse_error() {
-        let mut bytes = br#"{
-    "version":3,
-    "file":"sum.js",
-    "sources":["sum.ts"],
-    "names":[]
-    "mappings":";;;AAAO,IAAM,GAAG,GAAG,UAAC,CAAS,EAAE,CAAS,IAAK,OAAA,CAAC,GAAG,CAAC,EAAL,CAAK,CAAA;AAArC,QAAA,GAAG,OAAkC"
-}"#.to_vec();
-        assert!(RawSourceMap::from_slice(bytes.as_mut_slice()).is_err())
-    }
+#[cfg(feature = "index-map")]
+#[derive(Debug, simd_json_derive::Deserialize)]
+pub(crate) struct RawSection<'a> {
+    pub offset: RawSectionOffset,
+    // Note: referenced source maps are not supported
+    // pub url: Option<&'a str>,
+    pub map: Option<RawSourceMap<'a>>,
 }

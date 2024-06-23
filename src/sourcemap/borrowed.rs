@@ -1,6 +1,6 @@
 use crate::finder::MappingFinder;
 use crate::mapping::{Mapping, Position};
-use crate::mappings::{ItemsCount, Mappings};
+use crate::mappings::{ItemsCount, Mappings, MappingsDecoder};
 use crate::sourcemap::raw::RawSourceMap;
 use crate::{ParseError, ParseResult, ValidateError, ValidateResult};
 use simd_json_derive::{Deserialize, Serialize};
@@ -283,7 +283,15 @@ impl<'a> BorrowedSourceMap<'a> {
         if !matches!(raw.version, Some(3)) {
             return Err(ParseError::UnsupportedFormat);
         }
+        #[cfg(feature = "index-map")]
+        if let Some(sections) = raw.sections {
+            return Self::process_index_map(sections);
+        }
 
+        Self::process_map(raw)
+    }
+
+    fn process_map(raw: RawSourceMap<'a>) -> ParseResult<Self> {
         let file = raw.file.map(Cow::Borrowed);
 
         let source_root = raw.source_root.map(Cow::Borrowed);
@@ -318,10 +326,9 @@ impl<'a> BorrowedSourceMap<'a> {
         #[cfg(feature = "ignore_list")]
         let ignore_list = raw.ignore_list.unwrap_or_default();
 
-        let mappings = Mappings::decode(
-            raw.mappings.unwrap_or_default(),
-            ItemsCount::new(sources_len as u32, names_len as u32),
-        )?;
+        let mappings = MappingsDecoder::new(raw.mappings.unwrap_or_default())
+            .items_count(sources_len as u32, names_len as u32)
+            .decode()?;
 
         Ok(Self {
             file,
@@ -330,6 +337,139 @@ impl<'a> BorrowedSourceMap<'a> {
             sources_content,
             names,
             mappings,
+            #[cfg(feature = "ignore_list")]
+            ignore_list,
+        })
+    }
+
+    // To simplify the flattening logic of the index map, the following strategies are adopted:
+    // 1. ignore the `file` attribute in all child maps,
+    // 2. concat `source_root` for each `source`,
+    // 3. merge `sources`/`names` from the child maps without performing any deduplication.
+    #[cfg(feature = "index-map")]
+    fn process_index_map(
+        sections: Vec<crate::sourcemap::raw::RawSection<'a>>,
+    ) -> ParseResult<Self> {
+        let mut mappings = Mappings::empty();
+        let mut names = vec![];
+        let mut sources = vec![];
+        let mut sources_content = vec![];
+
+        #[cfg(feature = "ignore_list")]
+        let mut ignore_list = vec![];
+
+        let mut last_section_end_pos = Position::min();
+        for section in sections.into_iter() {
+            let current_section_start_pos = Position {
+                line: section.offset.line,
+                column: section.offset.column,
+            };
+
+            // offset should be greater than the last position of the last section
+            if current_section_start_pos.le(&last_section_end_pos) {
+                return Err(ParseError::MappingsUnordered);
+            }
+
+            match section.map {
+                Some(raw) => {
+                    let start_names_id = names.len() as u32;
+                    let start_sources_id = sources.len() as u32;
+
+                    {
+                        if let Some(raw_names) = raw.names {
+                            names.extend(raw_names.into_iter().map(Cow::Borrowed));
+                        }
+
+                        if let Some(raw_sources) = raw.sources {
+                            let raw_sources_len = raw_sources.len();
+
+                            if let Some(raw_source_root) =
+                                raw.source_root.filter(|sr| !sr.is_empty())
+                            {
+                                let source_root = raw_source_root.trim_end_matches('/');
+                                sources.extend(raw_sources.into_iter().map(|s| {
+                                    s.map(|source| {
+                                        if !source.is_empty()
+                                            && (source.starts_with('/')
+                                                || source.starts_with("http:")
+                                                || source.starts_with("https:"))
+                                        {
+                                            Cow::Borrowed(source)
+                                        } else {
+                                            Cow::Owned(format!("{}/{}", source_root, source))
+                                        }
+                                    })
+                                }));
+                            } else {
+                                sources
+                                    .extend(raw_sources.into_iter().map(|s| s.map(Cow::Borrowed)));
+                            }
+
+                            if let Some(raw_sources_content) = raw.sources_content {
+                                let raw_sources_content_len = raw_sources_content.len();
+                                if raw_sources_content_len != raw_sources_len {
+                                    return Err(ParseError::MismatchSourcesContent {
+                                        sources_len: raw_sources_len as u32,
+                                        sources_content_len: raw_sources_content_len as u32,
+                                    });
+                                }
+                                sources_content.extend(
+                                    raw_sources_content
+                                        .into_iter()
+                                        .map(|s| s.map(Cow::Borrowed)),
+                                );
+                            } else {
+                                sources_content.extend(repeat_with(|| None).take(raw_sources_len));
+                            }
+                        }
+                    }
+
+                    let end_sources_id = sources.len() as u32;
+                    let end_names_id = names.len() as u32;
+
+                    #[cfg(feature = "ignore_list")]
+                    if let Some(raw_ignore_list) = raw.ignore_list {
+                        if !raw_ignore_list.is_empty() {
+                            for source_id in raw_ignore_list.into_iter() {
+                                let fixed_source_id = source_id + start_sources_id;
+                                if fixed_source_id >= end_sources_id {
+                                    // skip if points to a non-existent source
+                                    continue;
+                                }
+                                ignore_list.push(fixed_source_id);
+                            }
+                        }
+                    }
+
+                    MappingsDecoder::new(raw.mappings.unwrap_or_default())
+                        .items_count(end_sources_id, end_names_id)
+                        .state(
+                            current_section_start_pos.line,
+                            current_section_start_pos.column,
+                            start_sources_id,
+                            start_names_id,
+                        )
+                        .decode_into(&mut mappings)?;
+
+                    if let Some(mapping) = mappings.last() {
+                        last_section_end_pos = mapping.generated();
+                    }
+                }
+                None => {
+                    // external maps referenced via URL are not supported,
+                    // silently ignored without error.
+                    last_section_end_pos = current_section_start_pos
+                }
+            }
+        }
+
+        Ok(Self {
+            file: None,
+            mappings,
+            names,
+            source_root: None,
+            sources,
+            sources_content,
             #[cfg(feature = "ignore_list")]
             ignore_list,
         })

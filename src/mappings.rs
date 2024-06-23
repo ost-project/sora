@@ -76,7 +76,7 @@ impl Mappings {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct ItemsCount {
     pub(crate) sources: u32,
     pub(crate) names: u32,
@@ -170,22 +170,71 @@ impl Mappings {
 }
 
 impl Mappings {
-    pub(crate) fn decode(source: &str, items_count: ItemsCount) -> ParseResult<Self> {
-        let mut result = Vec::with_capacity(256);
-        // the ratio of source.len to mappings.len is generally between 5 and 7,
-        // with most minified ones being > 6 and most unminified ones being < 6;
-        // 6 is a conservative value here.
-        // result.reserve(source.len() / 6);
+    pub(crate) fn empty() -> Self {
+        Self(Vec::with_capacity(256))
+    }
+}
 
-        let mut source_id = 0;
+#[derive(Default)]
+pub(crate) struct MappingsDecoder<'a> {
+    source: &'a str,
+    items_count: ItemsCount,
+    #[cfg(feature = "index-map")]
+    /// (generated_line, generated_col, source_id, name_id)
+    state: (u32, u32, u32, u32),
+}
+
+impl<'a> MappingsDecoder<'a> {
+    #[inline]
+    pub(crate) fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub(crate) fn items_count(mut self, sources: u32, names: u32) -> Self {
+        self.items_count = ItemsCount::new(sources, names);
+        self
+    }
+
+    #[inline]
+    #[cfg(feature = "index-map")]
+    pub(crate) fn state(
+        mut self,
+        generated_line: u32,
+        generated_col: u32,
+        source_id: u32,
+        name_id: u32,
+    ) -> Self {
+        self.state = (generated_line, generated_col, source_id, name_id);
+        self
+    }
+}
+
+impl<'a> MappingsDecoder<'a> {
+    pub(crate) fn decode(&self) -> ParseResult<Mappings> {
+        let mut mappings = Mappings::empty();
+        self.decode_into(&mut mappings)?;
+        Ok(mappings)
+    }
+
+    pub(crate) fn decode_into(&self, mappings: &mut Mappings) -> ParseResult<()> {
+        let source = self.source;
+        let items_count = self.items_count;
+
+        let buffer = &mut mappings.0;
+
+        #[cfg(feature = "index-map")]
+        let (mut generated_line, mut generated_col, mut source_id, mut name_id) = self.state;
+        #[cfg(not(feature = "index-map"))]
+        let (mut generated_line, mut generated_col, mut source_id, mut name_id) = (0, 0, 0, 0);
+
         let mut source_line = 0;
         let mut source_col = 0;
-        let mut name_id = 0;
 
         let mut decoder = VlqDecoder::new();
-
-        let mut generated_line = 0;
-        let mut generated_col = 0;
 
         let splitter = MappingSplitter::new(source);
 
@@ -236,7 +285,7 @@ impl Mappings {
                             }
                         }
                     };
-                result.push(mapping);
+                buffer.push(mapping);
             }
 
             if next_new_line {
@@ -245,6 +294,6 @@ impl Mappings {
             }
         }
 
-        Ok(Self(result))
+        Ok(())
     }
 }
