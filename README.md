@@ -7,6 +7,6 @@
 
 **Documentation**: [https://docs.rs/sora](https://docs.rs/sora)
 
-**MSRV**: 1.65.0 (3 November, 2022)
+**MSRV**: 1.70.0 (1 June, 2023)
 
 **License**: MIT
