@@ -1,4 +1,5 @@
 use crate::finder::{MappingFinder, MappingFinderImpl};
+use crate::hint::{likely, unlikely};
 use crate::mapping::{Mapping, Position};
 use crate::splitter::MappingSplitter;
 use crate::vlq::{VlqDecoder, VlqEncoder};
@@ -238,26 +239,26 @@ impl<'a> MappingsDecoder<'a> {
         let splitter = MappingSplitter::new(source);
 
         for (segment, next_new_line) in splitter {
-            if !segment.is_empty() {
+            if likely!(!segment.is_empty()) {
                 let nums = decoder.decode(segment)?;
 
                 let mapping =
                     match nums.len() {
                         1 => {
-                            if nums[0] < 0 {
+                            if unlikely!(nums[0] < 0) {
                                 return Err(ParseError::MappingsUnordered);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
                             Mapping::new(generated_line, generated_col)
                         }
                         4 | 5 => {
-                            if nums[0] < 0 {
+                            if unlikely!(nums[0] < 0) {
                                 return Err(ParseError::MappingsUnordered);
                             }
                             generated_col = (generated_col as i64 + nums[0]) as u32;
 
                             source_id = (source_id as i64 + nums[1]) as u32;
-                            if source_id >= items_count.sources {
+                            if unlikely!(source_id >= items_count.sources) {
                                 return Err(ParseError::UnknownSourceReference(source_id));
                             }
 
@@ -269,7 +270,7 @@ impl<'a> MappingsDecoder<'a> {
 
                             if nums.len() == 5 {
                                 name_id = (name_id as i64 + nums[4]) as u32;
-                                if name_id >= items_count.names {
+                                if unlikely!(name_id >= items_count.names) {
                                     return Err(ParseError::UnknownNameReference(name_id));
                                 }
                                 mapping = mapping.with_name(name_id)

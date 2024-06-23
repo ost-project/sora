@@ -48,6 +48,7 @@
 
 mod error;
 mod finder;
+mod hint;
 mod mapping;
 mod mappings;
 mod sourcemap;

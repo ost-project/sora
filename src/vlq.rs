@@ -1,3 +1,4 @@
+use crate::hint::unlikely;
 use crate::{ParseError, ParseResult};
 use std::io;
 use std::io::Write;
@@ -41,7 +42,7 @@ impl VlqDecoder {
             shift += 5;
 
             if value & 0b100000 == 0 {
-                if len > 4 {
+                if unlikely!(len > 4) {
                     return Err(ParseError::MappingMalformed(segment.to_owned()));
                 }
 
@@ -57,7 +58,7 @@ impl VlqDecoder {
             }
         }
 
-        if shift != 0 {
+        if unlikely!(shift != 0) {
             Err(ParseError::MappingMalformed(segment.to_owned()))
         } else {
             // SAFETY: self.len is guaranteed to be <= 5 in the above code

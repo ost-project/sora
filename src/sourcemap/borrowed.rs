@@ -1,4 +1,5 @@
 use crate::finder::MappingFinder;
+use crate::hint::unlikely;
 use crate::mapping::{Mapping, Position};
 use crate::mappings::{ItemsCount, Mappings, MappingsDecoder};
 use crate::sourcemap::raw::RawSourceMap;
@@ -303,7 +304,7 @@ impl<'a> BorrowedSourceMap<'a> {
 
 impl<'a> BorrowedSourceMap<'a> {
     fn from_raw(raw: RawSourceMap<'a>) -> ParseResult<Self> {
-        if !matches!(raw.version, Some(3)) {
+        if unlikely!(!matches!(raw.version, Some(3))) {
             return Err(ParseError::UnsupportedFormat);
         }
         #[cfg(feature = "index-map")]
@@ -389,7 +390,9 @@ impl<'a> BorrowedSourceMap<'a> {
             };
 
             // offset should be greater than the last position of the last section
-            if last_section_end_pos.is_some_and(|ref pos| current_section_start_pos.le(pos)) {
+            if unlikely!(
+                last_section_end_pos.is_some_and(|ref pos| current_section_start_pos.le(pos))
+            ) {
                 return Err(ParseError::MappingsUnordered);
             }
 
@@ -430,7 +433,7 @@ impl<'a> BorrowedSourceMap<'a> {
 
                             if let Some(raw_sources_content) = raw.sources_content {
                                 let raw_sources_content_len = raw_sources_content.len();
-                                if raw_sources_content_len != raw_sources_len {
+                                if unlikely!(raw_sources_content_len != raw_sources_len) {
                                     return Err(ParseError::MismatchSourcesContent {
                                         sources_len: raw_sources_len as u32,
                                         sources_content_len: raw_sources_content_len as u32,
@@ -455,7 +458,7 @@ impl<'a> BorrowedSourceMap<'a> {
                         if !raw_ignore_list.is_empty() {
                             for source_id in raw_ignore_list.into_iter() {
                                 let fixed_source_id = source_id + start_sources_id;
-                                if fixed_source_id >= end_sources_id {
+                                if unlikely!(fixed_source_id >= end_sources_id) {
                                     // skip if points to a non-existent source
                                     continue;
                                 }
