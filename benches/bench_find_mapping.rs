@@ -21,7 +21,7 @@ macro_rules! assert_pos {
 }
 
 fn benchmark_find_mapping(c: &mut Criterion) {
-    let buf = fs::read("data/tsc.min.js.map").unwrap();
+    let buf = fs::read("benches/data/tsc.min.js.map").unwrap();
 
     let map_samples = &[
         ((340, 5636), (68, 619, 8)),
