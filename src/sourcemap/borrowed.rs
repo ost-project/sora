@@ -190,6 +190,11 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     #[inline]
+    pub fn name_at(&self, id: u32) -> Option<&str> {
+        self.names.get(id as usize).map(|name| name.as_ref())
+    }
+
+    #[inline]
     pub fn names(&self) -> &[Cow<'a, str>] {
         &self.names
     }
@@ -200,6 +205,14 @@ impl<'a> BorrowedSourceMap<'a> {
     }
 
     #[inline]
+    pub fn source_at(&self, id: u32) -> Option<&str> {
+        self.sources
+            .get(id as usize)
+            .and_then(|source| source.as_ref())
+            .map(|source| source.as_ref())
+    }
+
+    #[inline]
     pub fn sources(&self) -> &[Option<Cow<'a, str>>] {
         &self.sources
     }
@@ -207,6 +220,14 @@ impl<'a> BorrowedSourceMap<'a> {
     #[inline]
     pub fn sources_mut(&mut self) -> &mut [Option<Cow<'a, str>>] {
         &mut self.sources
+    }
+
+    #[inline]
+    pub fn source_content_at(&self, id: u32) -> Option<&str> {
+        self.sources_content
+            .get(id as usize)
+            .and_then(|source| source.as_ref())
+            .map(|source| source.as_ref())
     }
 
     #[inline]

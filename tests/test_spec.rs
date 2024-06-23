@@ -213,29 +213,30 @@ impl TestCase {
                             .find_mapping((*generated_line, *generated_column))
                             .expect(&msg);
                         let actual_source = mapping.source_info().expect(&msg);
-                        let actual_source_name = map.sources()[actual_source.id as usize]
-                            .as_deref()
-                            .map(str::to_owned);
-                        assert!(original_source.eq(&actual_source_name), "{}", msg);
+                        let actual_source_name = map.source_at(actual_source.id);
+                        assert!(
+                            original_source.as_deref().eq(&actual_source_name),
+                            "{}",
+                            msg
+                        );
                         assert_eq!(
                             Position::from((*original_line, *original_column)),
                             actual_source.position,
                             "{}",
                             msg
                         );
-                        if let Some(name) = mapped_name {
-                            let actual_name = mapping.name_info().expect(&msg);
-                            let actual_name = map.names()[actual_name as usize].as_ref();
-
-                            assert_eq!(name, actual_name, "{}", msg);
-                        }
+                        assert_eq!(
+                            mapped_name.as_deref(),
+                            mapping.name_info().and_then(|id| map.name_at(id)),
+                            "{}",
+                            msg
+                        );
                     }
                     TestAction::CheckIgnoreList { present } => {
                         assert_eq!(present.len(), map.ignore_list().len(), "{}", msg);
 
                         for (idx, &source_id) in map.ignore_list().iter().enumerate() {
-                            let actual_source =
-                                map.sources()[source_id as usize].as_deref().expect(&msg);
+                            let actual_source = map.source_at(source_id).expect(&msg);
                             assert_eq!(present[idx], actual_source, "{}", msg);
                         }
                     }
