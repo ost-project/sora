@@ -366,7 +366,7 @@ impl<'a> BorrowedSourceMap<'a> {
             };
 
             // offset should be greater than the last position of the last section
-            if current_section_start_pos.le(&last_section_end_pos) {
+            if current_section_start_pos.lt(&last_section_end_pos) {
                 return Err(ParseError::MappingsUnordered);
             }
 

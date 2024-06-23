@@ -294,6 +294,16 @@ impl<'a> MappingsDecoder<'a> {
             }
         }
 
+        if let Some(mapping) = buffer.last() {
+            if mapping.generated().line != generated_line {
+                // There is only one scenario where the last mapping's line would differ from
+                // the final generated_line: when the last line has no mappings.
+                // Therefore, a mapping that points to the start of the last line
+                // needs to be inserted to mark the end of the map.
+                buffer.push(Mapping::new(generated_line, 0))
+            }
+        }
+
         Ok(())
     }
 }
