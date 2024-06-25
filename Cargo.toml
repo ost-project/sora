@@ -27,12 +27,16 @@ memchr = "2.6"
 [dev-dependencies]
 insta = "1.39"
 criterion = "0.5"
-sourcemap = { git = "https://github.com/getsentry/rust-sourcemap.git", package = "sourcemap" }
 
 serde_json = "1.0"
 paste = "1.0"
 
 mimalloc = "0.1"
+
+# May 29, 2024
+sentry_sourcemap = { git = "https://github.com/getsentry/rust-sourcemap.git", rev = "3de0fa3c", package = "sourcemap" }
+# June 25, 2024
+oxc_sourcemap = { git = "https://github.com/oxc-project/oxc", rev = "f6c4ec44", package = "oxc_sourcemap" }
 
 [features]
 builder = []

@@ -8,31 +8,36 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn parse_sora_borrowed(mut data: Vec<u8>) {
+fn sora_parse_borrowed(mut data: Vec<u8>) {
     black_box(sora::BorrowedSourceMap::from_slice(&mut data).unwrap());
 }
 
-fn parse_sora_owned(data: Vec<u8>) {
+fn sora_parse_owned(data: Vec<u8>) {
     black_box(sora::SourceMap::from(data).unwrap());
 }
 
-fn parse_sourcemap(data: Vec<u8>) {
-    black_box(sourcemap::SourceMap::from_slice(&data).unwrap());
+fn sentry_parse(data: Vec<u8>) {
+    black_box(sentry_sourcemap::SourceMap::from_slice(&data).unwrap());
 }
 
 #[cfg(feature = "index-map")]
-fn parse_sourcemap_indexmap(data: Vec<u8>) {
-    black_box(sourcemap::SourceMapIndex::from_slice(&data).unwrap());
+fn sentry_parse_index(data: Vec<u8>) {
+    black_box(sentry_sourcemap::SourceMapIndex::from_slice(&data).unwrap());
 }
 
 #[cfg(feature = "index-map")]
-fn parse_sourcemap_indexmap_flatten(data: Vec<u8>) {
+fn sentry_parse_index_flatten(data: Vec<u8>) {
     black_box(
-        sourcemap::SourceMapIndex::from_slice(&data)
+        sentry_sourcemap::SourceMapIndex::from_slice(&data)
             .unwrap()
             .flatten()
             .unwrap(),
     );
+}
+
+fn oxc_parse(data: Vec<u8>) {
+    let data = unsafe { String::from_utf8_unchecked(data) };
+    black_box(oxc_sourcemap::SourceMap::from_json_string(&data).unwrap());
 }
 
 fn benchmark_parse(c: &mut Criterion) {
@@ -46,13 +51,16 @@ fn benchmark_parse(c: &mut Criterion) {
     for (name, buf, batch_size) in cases {
         let mut bg = c.benchmark_group(format!("parse({name})"));
         bg.bench_with_input("sora(borrowed)", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sora_borrowed, batch_size)
+            b.iter_batched(|| input.clone(), sora_parse_borrowed, batch_size)
         });
         bg.bench_with_input("sora(owned)", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sora_owned, batch_size)
+            b.iter_batched(|| input.clone(), sora_parse_owned, batch_size)
         });
-        bg.bench_with_input("sourcemap", &buf, |b, input| {
-            b.iter_batched(|| input.clone(), parse_sourcemap, batch_size)
+        bg.bench_with_input("sentry", &buf, |b, input| {
+            b.iter_batched(|| input.clone(), sentry_parse, batch_size)
+        });
+        bg.bench_with_input("oxc", &buf, |b, input| {
+            b.iter_batched(|| input.clone(), oxc_parse, batch_size)
         });
     }
 
@@ -65,20 +73,16 @@ fn benchmark_parse(c: &mut Criterion) {
         for (name, buf, batch_size) in cases {
             let mut bg = c.benchmark_group(format!("parse({name})"));
             bg.bench_with_input("sora(borrowed)", &buf, |b, input| {
-                b.iter_batched(|| input.clone(), parse_sora_borrowed, batch_size)
+                b.iter_batched(|| input.clone(), sora_parse_borrowed, batch_size)
             });
             bg.bench_with_input("sora(owned)", &buf, |b, input| {
-                b.iter_batched(|| input.clone(), parse_sora_owned, batch_size)
+                b.iter_batched(|| input.clone(), sora_parse_owned, batch_size)
             });
-            bg.bench_with_input("sourcemap", &buf, |b, input| {
-                b.iter_batched(|| input.clone(), parse_sourcemap_indexmap, batch_size)
+            bg.bench_with_input("sentry", &buf, |b, input| {
+                b.iter_batched(|| input.clone(), sentry_parse_index, batch_size)
             });
-            bg.bench_with_input("sourcemap(flatten)", &buf, |b, input| {
-                b.iter_batched(
-                    || input.clone(),
-                    parse_sourcemap_indexmap_flatten,
-                    batch_size,
-                )
+            bg.bench_with_input("sentry(flatten)", &buf, |b, input| {
+                b.iter_batched(|| input.clone(), sentry_parse_index_flatten, batch_size)
             });
         }
     }

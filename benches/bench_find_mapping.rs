@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::fs;
+use std::str::from_utf8_unchecked;
 
 macro_rules! assert_pos {
     (sora: $actual:expr, $expected:ident) => {
@@ -8,10 +9,20 @@ macro_rules! assert_pos {
             sora::SourceInfo::new($expected.0, ($expected.1, $expected.2).into())
         );
     };
-    (sourcemap: $actual:expr, $expected:ident) => {
+    (sentry: $actual:expr, $expected:ident) => {
         assert_eq!(
             (
                 $actual.get_src_id(),
+                $actual.get_src_line(),
+                $actual.get_src_col()
+            ),
+            $expected
+        );
+    };
+    (oxc: $actual:expr, $expected:ident) => {
+        assert_eq!(
+            (
+                $actual.get_source_id().unwrap(),
                 $actual.get_src_line(),
                 $actual.get_src_col()
             ),
@@ -45,12 +56,22 @@ fn benchmark_find_mapping(c: &mut Criterion) {
                 assert_pos!(sora: sm.finder().find_mapping(pos).unwrap(), expected);
             })
         });
-        bg.bench_function("sourcemap", |b| {
-            let sm = sourcemap::SourceMap::from_slice(&buf).unwrap();
+        bg.bench_function("sentry", |b| {
+            let sm = sentry_sourcemap::SourceMap::from_slice(&buf).unwrap();
 
             b.iter(|| {
                 let token = sm.lookup_token(pos.0, pos.1).unwrap();
-                assert_pos!(sourcemap: token, expected);
+                assert_pos!(sentry: token, expected);
+            })
+        });
+        bg.bench_function("oxc", |b| {
+            let buf = unsafe { from_utf8_unchecked(&buf) };
+            let sm = oxc_sourcemap::SourceMap::from_json_string(buf).unwrap();
+
+            b.iter(|| {
+                let table = sm.generate_lookup_table();
+                let token = sm.lookup_token(&table, pos.0, pos.1).unwrap();
+                assert_pos!(oxc: token, expected);
             })
         });
     }
@@ -73,12 +94,23 @@ fn benchmark_find_mapping(c: &mut Criterion) {
                 }
             })
         });
-        bg.bench_function("sourcemap", |b| {
-            let sm = sourcemap::SourceMap::from_slice(&buf).unwrap();
+        bg.bench_function("sentry", |b| {
+            let sm = sentry_sourcemap::SourceMap::from_slice(&buf).unwrap();
             b.iter(|| {
                 for &(pos, expected) in map_samples {
                     let token = sm.lookup_token(pos.0, pos.1).unwrap();
-                    assert_pos!(sourcemap: token, expected);
+                    assert_pos!(sentry: token, expected);
+                }
+            })
+        });
+        bg.bench_function("oxc", |b| {
+            let buf = unsafe { from_utf8_unchecked(&buf) };
+            let sm = oxc_sourcemap::SourceMap::from_json_string(buf).unwrap();
+            b.iter(|| {
+                let table = sm.generate_lookup_table();
+                for &(pos, expected) in map_samples {
+                    let token = sm.lookup_token(&table, pos.0, pos.1).unwrap();
+                    assert_pos!(oxc: token, expected);
                 }
             })
         });
