@@ -108,7 +108,7 @@ impl Debug for Mapping {
                 " -> {}:{}:{}",
                 source_info.id, source_info.position.line, source_info.position.column,
             )?;
-            if let Some(name_id) = self.name_info() {
+            if let Some(name_id) = self.name_id() {
                 write!(f, " ({})", name_id)?;
             }
         }
@@ -153,6 +153,18 @@ impl Mapping {
         self.generated
     }
 
+    /// Returns the source id if available.
+    #[inline]
+    pub fn source_id(&self) -> Option<u32> {
+        self.source_info().map(|source| source.id)
+    }
+
+    /// Returns the source position if available.
+    #[inline]
+    pub fn source_position(&self) -> Option<Position> {
+        self.source_info().map(|source| source.position)
+    }
+
     /// Returns the source information if available.
     #[inline]
     pub fn source_info(&self) -> Option<SourceInfo> {
@@ -174,7 +186,7 @@ impl Mapping {
     /// Note that in a mapping,
     /// name information will only be available if the source information is present.
     #[inline]
-    pub fn name_info(&self) -> Option<u32> {
+    pub fn name_id(&self) -> Option<u32> {
         self.name.get().map(|&[v]| v)
     }
 

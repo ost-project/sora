@@ -227,7 +227,7 @@ impl TestCase {
                         );
                         assert_eq!(
                             mapped_name.as_deref(),
-                            mapping.name_info().and_then(|id| map.name_at(id)),
+                            mapping.name_id().and_then(|id| map.name_at(id)),
                             "{}",
                             msg
                         );

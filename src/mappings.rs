@@ -128,7 +128,7 @@ impl Mappings {
                 encoder.encode(prev_source_col, source_info.position.column)?;
                 prev_source_col = source_info.position.column;
 
-                if let Some(name_id) = mapping.name_info() {
+                if let Some(name_id) = mapping.name_id() {
                     encoder.encode(prev_name_id, name_id)?;
                     prev_name_id = name_id;
                 }
@@ -157,7 +157,7 @@ impl Mappings {
                     return Err(ValidateError::UnknownSourceReference(source_info.id));
                 }
 
-                if let Some(name_id) = mapping.name_info() {
+                if let Some(name_id) = mapping.name_id() {
                     if name_id >= items_count.names {
                         return Err(ValidateError::UnknownNameReference(name_id));
                     }
