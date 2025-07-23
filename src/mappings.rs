@@ -106,11 +106,11 @@ impl Mappings {
             if generated_pos.line != prev_generated_line {
                 prev_generated_col = 0;
                 while generated_pos.line != prev_generated_line {
-                    writer.write_all(&[b';'])?;
+                    writer.write_all(b";")?;
                     prev_generated_line += 1;
                 }
             } else if idx != 0 {
-                writer.write_all(&[b','])?;
+                writer.write_all(b",")?;
             }
 
             let mut encoder = VlqEncoder::new(writer);

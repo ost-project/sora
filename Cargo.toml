@@ -7,7 +7,7 @@ keywords = ["sourcemap"]
 repository = "https://github.com/ost-project/sora"
 homepage = "https://github.com/ost-project/sora#readme"
 documentation = "https://docs.rs/sora"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 readme = "README.md"
 

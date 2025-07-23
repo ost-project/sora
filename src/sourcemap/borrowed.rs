@@ -90,14 +90,14 @@ impl Debug for BorrowedSourceMap<'_> {
         f.write_str("  mappings:\n")?;
         if !self.mappings.is_empty() {
             let mut last_mapping = &self.mappings[0];
-            write!(f, "    {:?}", last_mapping)?;
+            write!(f, "    {last_mapping:?}")?;
             for mapping in self.mappings.iter().skip(1) {
                 if mapping.generated().line != last_mapping.generated().line {
                     f.write_str("\n    ")?;
                 } else {
                     f.write_str(", ")?;
                 }
-                write!(f, "{:?}", mapping)?;
+                write!(f, "{mapping:?}")?;
                 last_mapping = mapping;
             }
         }
@@ -422,7 +422,7 @@ impl<'a> BorrowedSourceMap<'a> {
                                         {
                                             Cow::Borrowed(source)
                                         } else {
-                                            Cow::Owned(format!("{}/{}", source_root, source))
+                                            Cow::Owned(format!("{source_root}/{source}"))
                                         }
                                     })
                                 }));

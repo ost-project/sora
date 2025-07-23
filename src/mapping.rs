@@ -109,7 +109,7 @@ impl Debug for Mapping {
                 source_info.id, source_info.position.line, source_info.position.column,
             )?;
             if let Some(name_id) = self.name_id() {
-                write!(f, " ({})", name_id)?;
+                write!(f, " ({name_id})")?;
             }
         }
         Ok(())
